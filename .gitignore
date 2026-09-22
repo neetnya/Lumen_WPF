@@ -1,0 +1,15 @@
+# 构建产物
+bin/
+obj/
+packages/
+
+# 辅助工具（图标生成脚本，不参与主项目编译）
+tools/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# 本地数据（便携模式会在程序旁生成 data\）
+data/

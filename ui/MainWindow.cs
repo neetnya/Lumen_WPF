@@ -70,6 +70,7 @@ namespace Lumen.UI
                 HookSingleInstance();
                 HookHotkeys();
                 HookMediaKeys();
+                PreviewKeyDown += OnPreviewKeyDown;
                 ApplyGroup(_group, false);
                 QueueMetadata();
 
@@ -1090,6 +1091,26 @@ namespace Lumen.UI
                     if (WindowState == WindowState.Maximized) WindowState = WindowState.Normal;
                 }),
                 Key.Escape, ModifierKeys.None));
+        }
+
+        /// <summary>
+        /// 空格键切换播放/暂停。仅当焦点不在文本输入框（如搜索框）时才生效，
+        /// 避免在搜索框里敲空格时误触发。
+        /// </summary>
+        private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Space) return;
+
+            // 焦点在文本框 / 密码框等可输入控件里时，空格属于正常输入，交给控件处理。
+            var focused = Keyboard.FocusedElement as DependencyObject;
+            while (focused != null)
+            {
+                if (focused is TextBox || focused is PasswordBox) return;
+                focused = System.Windows.Media.VisualTreeHelper.GetParent(focused);
+            }
+
+            TogglePlayPause();
+            e.Handled = true;
         }
 
         // ------------------------------------------------------------------
