@@ -1,0 +1,14 @@
+E:\Lumen\tools\make_icon\bin\Release\net9.0-windows\make_icon.exe
+E:\Lumen\tools\make_icon\bin\Release\net9.0-windows\make_icon.deps.json
+E:\Lumen\tools\make_icon\bin\Release\net9.0-windows\make_icon.runtimeconfig.json
+E:\Lumen\tools\make_icon\bin\Release\net9.0-windows\make_icon.dll
+E:\Lumen\tools\make_icon\bin\Release\net9.0-windows\make_icon.pdb
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\make_icon.GeneratedMSBuildEditorConfig.editorconfig
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\make_icon.AssemblyInfoInputs.cache
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\make_icon.AssemblyInfo.cs
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\make_icon.csproj.CoreCompileInputs.cache
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\make_icon.dll
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\refint\make_icon.dll
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\make_icon.pdb
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\make_icon.genruntimeconfig.cache
+E:\Lumen\tools\make_icon\obj\Release\net9.0-windows\ref\make_icon.dll

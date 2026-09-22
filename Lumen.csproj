@@ -1,0 +1,68 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- WinForms 只为托盘 NotifyIcon 而引入；DPI 交给 WPF/系统处理 -->
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>Lumen</AssemblyName>
+    <RootNamespace>Lumen</RootNamespace>
+    <ApplicationIcon>assets\lumen.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>1.0.0</Version>
+    <Product>Lumen 音乐</Product>
+    <AssemblyTitle>Lumen 音乐</AssemblyTitle>
+    <Company>Lumen</Company>
+    <Platforms>AnyCPU;x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
+
+    <!--
+      WPF SDK 默认会把 **/*.xaml 全部当成 Page，并默认把 App.xaml 当成
+      ApplicationDefinition。我们已经显式声明了这两类项，必须关掉默认包含，
+      否则会报 NETSDK1022「包含重复的 Page 项」。
+    -->
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+
+    <!--
+      包缓存放在仓库内（packages\），配合 NuGet.config 的 local-feed，
+      整个项目可以完全离线还原与构建，不依赖 %USERPROFILE%\.nuget。
+    -->
+    <RestorePackagesPath>$(MSBuildProjectDirectory)\packages</RestorePackagesPath>
+
+    <NoWarn>$(NoWarn);CA1416;CS0649;MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <!-- 工具/临时工程不能编译进主项目 -->
+  <ItemGroup>
+    <Compile Remove="_harness\**" />
+    <Page Remove="_harness\**" />
+    <None Remove="_harness\**" />
+    <Compile Remove="tools\**" />
+    <Page Remove="tools\**" />
+    <None Remove="tools\**" />
+    <Compile Remove="selftest\Harness\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml" SubType="Designer" Generator="MSBuild:Compile" />
+    <Page Include="ui\**\*.xaml" SubType="Designer" Generator="MSBuild:Compile" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      NAudio 2.2.1：纯托管实现，不含原生 DLL。
+      解码走 Windows Media Foundation（MP3 / AAC / M4A / WMA / MP4 容器），
+      WAV / AIFF 由 NAudio 自己解析；输出用 WASAPI 共享模式。
+      包已缓存到仓库内的 local-feed\，配合 NuGet.config 可完全离线还原。
+    -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+</Project>
