@@ -37,6 +37,8 @@ namespace Lumen.UI
         public event Action ModeClicked;
         public event Action<double> SeekRequested;
         public event Action<float> VolumeChanged;
+        /// <summary>音量增量（鼠标滚轮在喇叭/音量条上滚动时触发）。</summary>
+        public event Action<float> VolumeDelta;
         public event Action MuteToggled;
 
         public BottomBar()
@@ -181,6 +183,7 @@ namespace Lumen.UI
 
             _btnMute = GhostButton(Icons.VolumeHigh, "静音");
             _btnMute.Click += delegate { Raise(MuteToggled); };
+            _btnMute.MouseWheel += OnVolumeWheel;
             right.Children.Add(_btnMute);
 
             // 音量滑块紧挨喇叭图标，右侧标注当前百分比
@@ -190,6 +193,12 @@ namespace Lumen.UI
                 var handler = VolumeChanged;
                 if (handler != null) handler(v);
             };
+            // 拖动过程中实时回调（用于百分比实时显示，不触发提交）
+            _volume.PreviewValueChanged += delegate (float v)
+            {
+                UpdateVolumePercent(v);
+            };
+            _volume.MouseWheel += OnVolumeWheel;
             right.Children.Add(_volume);
 
             _volumePercent = new TextBlock
@@ -263,12 +272,29 @@ namespace Lumen.UI
 
         public void SetVolume(float volume, bool muted)
         {
-            _volume.SetValueSilent(volume);
+            _volume.SetValueSilent(Math.Max(0f, Math.Min(1f, volume)));
             _btnMute.Content = Icons.Create(
                 muted ? Icons.VolumeMute : Icons.VolumeHigh, 14,
                 null, Theme.Brush(muted ? "Brush.Danger" : "Brush.TextDim"), 1.4);
             _btnMute.ToolTip = muted ? "取消静音" : "静音";
+            UpdateVolumePercent(Math.Max(0f, Math.Min(1f, volume)));
+        }
+
+        private void UpdateVolumePercent(float volume)
+        {
             _volumePercent.Text = Math.Round(volume * 100).ToString("0") + "%";
+        }
+
+        /// <summary>鼠标滚轮在喇叭/音量条上滚动：按步进增减音量。</summary>
+        private void OnVolumeWheel(object sender, MouseWheelEventArgs e)
+        {
+            var handler = VolumeDelta;
+            if (handler == null) return;
+
+            // 每格 ±5%，向上为正
+            float delta = e.Delta > 0 ? 0.05f : -0.05f;
+            handler(delta);
+            e.Handled = true;
         }
 
         public void SetTimeline(double position, double duration, bool hasTrack)
@@ -441,6 +467,9 @@ namespace Lumen.UI
 
         public event Action<float> ValueChanged;
 
+        /// <summary>拖动过程中每次移动都会触发（用于实时显示，不等松手提交）。</summary>
+        public event Action<float> PreviewValueChanged;
+
         public SliderEx()
         {
             Height = 18;
@@ -522,6 +551,13 @@ namespace Lumen.UI
             double usable = Math.Max(1, ActualWidth - 10);
             _value = (float)Math.Max(0, Math.Min(1, (x - 5) / usable));
             UpdateVisual();
+
+            // 拖动过程中实时回调（无论是否提交），让百分比跟着实时刷新
+            if (!_silent)
+            {
+                var preview = PreviewValueChanged;
+                if (preview != null) preview(_value);
+            }
 
             if (commit && !_silent)
             {

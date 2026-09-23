@@ -48,6 +48,7 @@ namespace Lumen.UI
         public event Action<Track> PlayRequested;
         public event Action<Track> RemoveRequested;
         public event Action<Track> RevealRequested;
+        public event Action<Track> DeleteFileRequested;
         public event Action<string> SortChanged;
         public event Action ShuffleRequested;
         public event Action ImportFilesRequested;
@@ -664,6 +665,10 @@ namespace Lumen.UI
             var remove = new MenuItem { Header = "从列表移除" };
             remove.Click += delegate { Raise(RemoveRequested, track); };
             menu.Items.Add(remove);
+
+            var deleteFile = new MenuItem { Header = "删除此文件" };
+            deleteFile.Click += delegate { Raise(DeleteFileRequested, track); };
+            menu.Items.Add(deleteFile);
 
             menu.Items.Add(new Separator());
 

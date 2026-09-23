@@ -188,5 +188,44 @@ namespace Lumen.Native
             if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref info)) return info.rcMonitor;
             return new RECT { left = 0, top = 0, right = 1920, bottom = 1080 };
         }
+
+        // ------------------------------------------------------------------
+        // 回收站删除（SHFileOperation + FO_DELETE + FOF_ALLOWUNDO）
+        // ------------------------------------------------------------------
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct SHFILEOPSTRUCT
+        {
+            public IntPtr hwnd;
+            public uint wFunc;
+            public string pFrom;
+            public string pTo;
+            public ushort fFlags;
+            public int fAnyOperationsAborted;
+            public IntPtr hNameMappings;
+            public string lpszProgressTitle;
+        }
+
+        private const uint FO_DELETE = 0x0003;
+        private const ushort FOF_ALLOWUNDO = 0x0040;   // 送进回收站
+        private const ushort FOF_NOCONFIRMATION = 0x0010; // 不弹确认
+        private const ushort FOF_SILENT = 0x0004;
+        private const ushort FOF_NOCONFIRMMKDIR = 0x0200;
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        private static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
+
+        /// <summary>把文件送进回收站（不弹确认框，可恢复）。返回 0 表示成功。</summary>
+        public static int DeleteToRecycleBin(string path)
+        {
+            // SHFileOperation 要求 pFrom 以两个 null 结尾
+            var op = new SHFILEOPSTRUCT
+            {
+                wFunc = FO_DELETE,
+                pFrom = path + "\0\0",
+                fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOCONFIRMMKDIR
+            };
+            return SHFileOperation(ref op);
+        }
     }
 }

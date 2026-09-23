@@ -202,6 +202,7 @@ namespace Lumen.UI
             _listPane.PlayRequested += delegate (Track t) { PlayTrack(t); };
             _listPane.RemoveRequested += delegate (Track t) { RemoveTrack(t); };
             _listPane.RevealRequested += delegate (Track t) { RevealInExplorer(t); };
+            _listPane.DeleteFileRequested += delegate (Track t) { DeleteTrackFile(t); };
             _listPane.SortChanged += delegate (string mode)
             {
                 _config.SortMode = mode;
@@ -238,6 +239,7 @@ namespace Lumen.UI
                 _config.Muted = false;
                 UpdateVolumeUi();
             };
+            _bottomBar.VolumeDelta += delegate (float delta) { NudgeVolume(delta); };
             _bottomBar.MuteToggled += delegate
             {
                 _config.Muted = !_config.Muted;
@@ -331,6 +333,33 @@ namespace Lumen.UI
             }
             RebuildView();
             SaveConfig();
+        }
+
+        /// <summary>右键菜单「删除此文件」：送进回收站（不弹确认），并从列表移除。</summary>
+        private void DeleteTrackFile(Track track)
+        {
+            if (track == null || string.IsNullOrEmpty(track.Path)) return;
+            if (!System.IO.File.Exists(track.Path)) return;
+
+            var name = System.IO.Path.GetFileName(track.Path);
+
+            // 正在播放就先停掉，避免句柄占用导致删除失败
+            if (string.Equals(_player.CurrentPath, track.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                _player.Stop();
+                _currentIndex = -1;
+            }
+
+            int result = Native.Win32.DeleteToRecycleBin(track.Path);
+            if (result != 0)
+            {
+                Log.Warn("送回收站失败: " + name + " (code " + result + ")");
+                Dialogs.ShowError(this, "删除失败", "无法将文件送进回收站：" + name);
+                return;
+            }
+
+            RemoveTrack(track);
+            _listPane.FlashStatus("已送进回收站：" + name);
         }
 
         private static void RevealInExplorer(Track track)
@@ -967,6 +996,20 @@ namespace Lumen.UI
             _bottomBar.SetVolume(_config.VolumePercent / 100f, _config.Muted);
         }
 
+        /// <summary>按增量调整音量（鼠标滚轮 / 上下方向键共用）。</summary>
+        private void NudgeVolume(float delta)
+        {
+            int current = _config.VolumePercent;
+            int next = Math.Max(0, Math.Min(100, current + (int)Math.Round(delta * 100)));
+            if (next == current) return;
+
+            _config.VolumePercent = next;
+            _player.Volume = next / 100f;
+            _config.Muted = false;
+            UpdateVolumeUi();
+            SaveConfig();
+        }
+
         private void UpdateBottomBar()
         {
             if (_bottomBar == null) return;
@@ -1094,14 +1137,12 @@ namespace Lumen.UI
         }
 
         /// <summary>
-        /// 空格键切换播放/暂停。仅当焦点不在文本输入框（如搜索框）时才生效，
-        /// 避免在搜索框里敲空格时误触发。
+        /// 全局按键：空格=播放/暂停，←/→=快退/快进，↑/↓=调大/调小音量。
+        /// 仅当焦点不在文本输入框（如搜索框）时才生效，避免误触发。
         /// </summary>
         private void OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key != Key.Space) return;
-
-            // 焦点在文本框 / 密码框等可输入控件里时，空格属于正常输入，交给控件处理。
+            // 焦点在文本框 / 密码框等可输入控件里时，方向键与空格属于正常输入/光标操作，交给控件处理。
             var focused = Keyboard.FocusedElement as DependencyObject;
             while (focused != null)
             {
@@ -1109,8 +1150,40 @@ namespace Lumen.UI
                 focused = System.Windows.Media.VisualTreeHelper.GetParent(focused);
             }
 
-            TogglePlayPause();
-            e.Handled = true;
+            switch (e.Key)
+            {
+                case Key.Space:
+                    TogglePlayPause();
+                    e.Handled = true;
+                    break;
+
+                case Key.Left:
+                    SeekBy(-5);
+                    e.Handled = true;
+                    break;
+
+                case Key.Right:
+                    SeekBy(5);
+                    e.Handled = true;
+                    break;
+
+                case Key.Up:
+                    NudgeVolume(0.05f);
+                    e.Handled = true;
+                    break;
+
+                case Key.Down:
+                    NudgeVolume(-0.05f);
+                    e.Handled = true;
+                    break;
+            }
+        }
+
+        /// <summary>按增量调整播放位置（左右方向键）。</summary>
+        private void SeekBy(double deltaSeconds)
+        {
+            if (!_player.HasTrack) return;
+            SeekTo(_player.PositionSeconds + deltaSeconds);
         }
 
         // ------------------------------------------------------------------
@@ -1221,6 +1294,12 @@ namespace Lumen.UI
                     LoadLyricsFor(_group.LastTrackPath);
                     UpdateBottomBar();
                     _bottomBar.SetPlaying(false);
+
+                    // 打开时定位到当前播放位置（等布局完成后再滚动）
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        _listPane.ScrollToPlaying();
+                    }), System.Windows.Threading.DispatcherPriority.Loaded);
 
                     Log.Info(string.Format("已恢复分组「{0}」的进度: {1} @ {2:0.0}s",
                         _group.Name,
